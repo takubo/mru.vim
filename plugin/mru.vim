@@ -1,3 +1,6 @@
+scriptencoding utf-8
+" vim:set ts=8 sts=2 sw=4 tw=0:
+
 " File: mru.vim
 " Author: Yegappan Lakshmanan (yegappan AT yahoo DOT com)
 " Version: 3.9
@@ -186,27 +189,6 @@
 "
 "       let MRU_Auto_Close = 0
 "
-" If you don't use the "File->Recent Files" menu and want to disable it,
-" then you can set the 'MRU_Add_Menu' variable to zero. By default, the
-" menu is enabled.
-"
-"       let MRU_Add_Menu = 0
-"
-" If too many file names are present in the MRU list, then updating the MRU
-" menu to list all the file names makes Vim slow. To avoid this, the
-" MRU_Max_Menu_Entries variable controls the number of file names to show in
-" the MRU menu. By default, this is set to 10. You can change this to show
-" more entries in the menu.
-"
-"       let MRU_Max_Menu_Entries = 20
-"
-" If many file names are present in the MRU list, then the MRU menu is split
-" into sub-menus. Each sub-menu contains MRU_Max_Submenu_Entries file names.
-" The default setting for this is 10. You can change this to increase the
-" number of file names displayed in a single sub-menu:
-"
-"       let MRU_Max_Submenu_Entries = 15
-"
 " In the MRU window, the filenames are displayed in two parts. The first part
 " contains the file name without the path and the second part contains the
 " full path to the file in parenthesis. This format is controlled by the
@@ -220,13 +202,9 @@
 "
 " ****************** Do not modify after this line ************************
 if exists('loaded_mru')
-    finish
+    "finish
 endif
 let loaded_mru=1
-
-if v:version < 700
-    finish
-endif
 
 " Line continuation used here
 let s:cpo_save = &cpo
@@ -235,7 +213,7 @@ set cpo&vim
 " MRU configuration variables {{{1
 " Maximum number of entries allowed in the MRU list
 if !exists('MRU_Max_Entries')
-    let MRU_Max_Entries = 100
+    let MRU_Max_Entries = 10000
 endif
 
 " Files to exclude from the MRU list
@@ -251,7 +229,7 @@ endif
 " Height of the MRU window
 " Default height is 8
 if !exists('MRU_Window_Height')
-    let MRU_Window_Height = 8
+    let MRU_Window_Height = 25
 endif
 
 if !exists('MRU_Use_Current_Window')
@@ -274,25 +252,6 @@ if !exists('MRU_File')
             endif
         endif
     endif
-endif
-
-" Option for enabling or disabling the MRU menu
-if !exists('MRU_Add_Menu')
-    let MRU_Add_Menu = 1
-endif
-
-" Maximum number of file names to show in the MRU menu. If too many files are
-" listed in the menu, then Vim becomes slow when updating the menu. So set
-" this to a low value.
-if !exists('MRU_Max_Menu_Entries')
-    let MRU_Max_Menu_Entries = 10
-endif
-
-" Maximum number of file names to show in a MRU sub-menu. If the MRU list
-" contains more file names than this setting, then the MRU menu is split into
-" one or more sub-menus.
-if !exists('MRU_Max_Submenu_Entries')
-    let MRU_Max_Submenu_Entries = 10
 endif
 
 " When only a single matching filename is found in the MRU list, the following
@@ -351,9 +310,6 @@ function! s:MRU_LoadList()
     else
         let s:MRU_files = []
     endif
-
-    " Refresh the MRU menu with the latest list of filenames
-    call s:MRU_Refresh_Menu()
 endfunction
 
 " MRU_SaveList                          {{{1
@@ -428,9 +384,6 @@ function! s:MRU_AddFile(acmd_bufnr)
 
     " Save the updated MRU list
     call s:MRU_SaveList()
-
-    " Refresh the MRU menu
-    call s:MRU_Refresh_Menu()
 
     " If the MRU window is open, update the displayed MRU list
     let bname = '__MRU_Files__'
@@ -915,99 +868,6 @@ function! s:MRU_Cmd(pat)
     endif
 
     call s:MRU_Open_Window(a:pat)
-endfunction
-
-" MRU_add_files_to_menu                 {{{1
-" Adds a list of files to the "Recent Files" sub menu under the "File" menu.
-"   prefix - Prefix to use for each of the menu entries
-"   file_list - List of file names to add to the menu
-function! s:MRU_add_files_to_menu(prefix, file_list)
-    for fname in a:file_list
-        " Escape special characters in the filename
-        let esc_fname = escape(fnamemodify(fname, ':t'), ".\\" .
-                                        \ s:esc_filename_chars)
-        let esc_fname = substitute(esc_fname, '&', '&&', 'g')
-
-        " Truncate the directory name if it is long
-        let dir_name = fnamemodify(fname, ':h')
-        let len = strlen(dir_name)
-        " Shorten long file names by adding only few characters from
-        " the beginning and end.
-        if len > 30
-            let dir_name = strpart(dir_name, 0, 10) .
-                        \ '...' . 
-                        \ strpart(dir_name, len - 20)
-        endif
-        let esc_dir_name = escape(dir_name, ".\\" . s:esc_filename_chars)
-        let esc_dir_name = substitute(esc_dir_name, '&', '&&', 'g')
-
-	let menu_path = '&File.&Recent\ Files.' . a:prefix . esc_fname .
-		    \ '\ (' . esc_dir_name . ')'
-	let esc_mfname = s:MRU_escape_filename(fname)
-        exe 'anoremenu <silent> ' . menu_path .
-                    \ " :call <SID>MRU_Edit_File('" . esc_mfname . "', 1)<CR>"
-	exe 'tmenu ' . menu_path . ' Edit file ' . esc_mfname
-    endfor
-endfunction
-
-" MRU_Refresh_Menu                      {{{1
-" Refresh the MRU menu
-function! s:MRU_Refresh_Menu()
-    return
-    if !has('menu') || !g:MRU_Add_Menu
-        " No support for menus
-        return
-    endif
-
-    " Setup the cpoptions properly for the maps to work
-    let old_cpoptions = &cpoptions
-    set cpoptions&vim
-
-    " Remove the MRU menu
-    " To retain the teared-off MRU menu, we need to add a dummy entry
-    silent! unmenu &File.&Recent\ Files
-    " The menu priority of the File menu is 10. If the MRU plugin runs
-    " first before menu.vim, the File menu order may not be correct.
-    " So specify the priority of the File menu here.
-    10noremenu &File.&Recent\ Files.Dummy <Nop>
-    silent! unmenu! &File.&Recent\ Files
-
-    anoremenu <silent> &File.&Recent\ Files.Refresh\ list
-                \ :call <SID>MRU_LoadList()<CR>
-    exe 'tmenu File.&Recent\ Files.Refresh\ list Reload the MRU file list from '
-		\ . s:MRU_escape_filename(g:MRU_File)
-    anoremenu File.&Recent\ Files.-SEP1-           :
-
-    " Add the filenames in the MRU list to the menu
-    let entry_cnt = len(s:MRU_files)
-    if entry_cnt > g:MRU_Max_Menu_Entries
-        " Show only MRU_Max_Menu_Entries file names in the menu
-        let mru_list = s:MRU_files[0 : g:MRU_Max_Menu_Entries - 1]
-        let entry_cnt = g:MRU_Max_Menu_Entries
-    else
-        let mru_list = s:MRU_files
-    endif
-    if entry_cnt > g:MRU_Max_Submenu_Entries
-	" Split the MRU menu into sub-menus
-        for start_idx in range(0, entry_cnt, g:MRU_Max_Submenu_Entries)
-            let last_idx = start_idx + g:MRU_Max_Submenu_Entries - 1
-            if last_idx >= entry_cnt
-                let last_idx = entry_cnt - 1
-            endif
-            let prefix = 'Files\ (' . (start_idx + 1) . '\.\.\.' .
-                        \ (last_idx + 1) . ').'
-            call s:MRU_add_files_to_menu(prefix,
-                        \ mru_list[start_idx : last_idx])
-        endfor
-    else
-        call s:MRU_add_files_to_menu('', mru_list)
-    endif
-
-    " Remove the dummy menu entry
-    unmenu &File.&Recent\ Files.Dummy
-
-    " Restore the previous cpoptions settings
-    let &cpoptions = old_cpoptions
 endfunction
 
 " Load the MRU list on plugin startup
