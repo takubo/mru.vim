@@ -953,6 +953,7 @@ endfunction
 " MRU_Refresh_Menu                      {{{1
 " Refresh the MRU menu
 function! s:MRU_Refresh_Menu()
+    return
     if !has('menu') || !g:MRU_Add_Menu
         " No support for menus
         return
