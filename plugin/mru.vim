@@ -812,6 +812,8 @@ function! s:MRU_Cmd(pat)
         return
     endif
 
+    let pat= '\c' . substitute(a:pat, ' \+', '.*', 'g')
+
     " Load the latest MRU file
     call s:MRU_LoadList()
 
@@ -824,7 +826,7 @@ function! s:MRU_Cmd(pat)
     " First use the specified string as a literal string and search for
     " filenames containing the string. If only one filename is found,
     " then edit it (unless the user wants to open the MRU window always)
-    let m = filter(copy(s:MRU_files), 'stridx(v:val, a:pat) != -1')
+    let m = filter(copy(s:MRU_files), 'stridx(v:val, pat) != -1')
     if len(m) > 0
 	if len(m) == 1 && !g:MRU_Window_Open_Always
 	    call s:MRU_Edit_File(m[0], 0)
@@ -832,7 +834,7 @@ function! s:MRU_Cmd(pat)
 	endif
 
 	" More than one file matches. Try find an accurate match
-	let new_m = filter(m, 'v:val ==# a:pat')
+	let new_m = filter(m, 'v:val ==# pat')
 	if len(new_m) == 1 && !g:MRU_Window_Open_Always
 	    call s:MRU_Edit_File(new_m[0], 0)
 	    return
@@ -840,25 +842,25 @@ function! s:MRU_Cmd(pat)
 
 	" Couldn't find an exact match, open the MRU window with all the
         " files matching the pattern.
-	call s:MRU_Open_Window(a:pat)
+	call s:MRU_Open_Window(pat)
 	return
     endif
 
     " Use the specified string as a regular expression pattern and search
     " for filenames matching the pattern
-    let m = filter(copy(s:MRU_files), 'v:val =~? a:pat')
+    let m = filter(copy(s:MRU_files), 'v:val =~? pat')
 
     if len(m) == 0
         " If an existing file (not present in the MRU list) is specified,
         " then open the file.
-        if filereadable(a:pat)
-            call s:MRU_Edit_File(a:pat, 0)
+        if filereadable(pat)
+            call s:MRU_Edit_File(pat, 0)
             return
         endif
 
         " No filenames matching the specified pattern are found
         call s:MRU_Warn_Msg("MRU file list doesn't contain " .
-                    \ "files matching " . a:pat)
+                    \ "files matching " . pat)
         return
     endif
 
@@ -867,7 +869,7 @@ function! s:MRU_Cmd(pat)
         return
     endif
 
-    call s:MRU_Open_Window(a:pat)
+    call s:MRU_Open_Window(pat)
 endfunction
 
 " Load the MRU list on plugin startup
@@ -886,10 +888,8 @@ autocmd QuickFixCmdPre *vimgrep* let s:mru_list_locked = 1
 autocmd QuickFixCmdPost *vimgrep* let s:mru_list_locked = 0
 
 " Command to open the MRU window
-command! -nargs=? -complete=customlist,s:MRU_Complete MRU
-            \ call s:MRU_Cmd(<q-args>)
-command! -nargs=? -complete=customlist,s:MRU_Complete Mru
-            \ call s:MRU_Cmd(<q-args>)
+command! -nargs=* -complete=customlist,s:MRU_Complete MRU call s:MRU_Cmd(<q-args>)
+command! -nargs=* -complete=customlist,s:MRU_Complete Mru call s:MRU_Cmd(<q-args>)
 
 " }}}
 
